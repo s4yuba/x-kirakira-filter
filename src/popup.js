@@ -1,19 +1,32 @@
 const STORAGE_KEY = 'kirakira_mute_words';
+const STORAGE_KEY_V2 = 'kirakira_mute_words_v2';
 
 const elements = {
   newWordInput: document.getElementById('new-word-input'),
   addWordBtn: document.getElementById('add-word-btn'),
   muteWordsList: document.getElementById('mute-words-list'),
   wordCount: document.getElementById('word-count'),
-  resetDefaultBtn: document.getElementById('reset-default-btn')
+  resetDefaultBtn: document.getElementById('reset-default-btn'),
+  toggleAllWords: document.getElementById('toggle-all-words')
 };
 
 let muteWords = [];
 
 async function loadMuteWords() {
   try {
-    const result = await chrome.storage.sync.get([STORAGE_KEY]);
-    muteWords = result[STORAGE_KEY] || [];
+    const resultV2 = await chrome.storage.sync.get([STORAGE_KEY_V2]);
+    if (resultV2[STORAGE_KEY_V2]) {
+      muteWords = resultV2[STORAGE_KEY_V2];
+    } else {
+      const resultV1 = await chrome.storage.sync.get([STORAGE_KEY]);
+      if (resultV1[STORAGE_KEY]) {
+        muteWords = resultV1[STORAGE_KEY].map(word => ({ text: word, enabled: true }));
+        await saveMuteWords();
+      } else {
+        muteWords = [];
+      }
+    }
+    updateToggleAllState();
     renderMuteWords();
   } catch (error) {
     console.error('Failed to load mute words:', error);
@@ -22,7 +35,9 @@ async function loadMuteWords() {
 
 async function saveMuteWords() {
   try {
-    await chrome.storage.sync.set({ [STORAGE_KEY]: muteWords });
+    await chrome.storage.sync.set({ [STORAGE_KEY_V2]: muteWords });
+    const enabledWords = muteWords.filter(w => w.enabled).map(w => w.text);
+    await chrome.storage.sync.set({ [STORAGE_KEY]: enabledWords });
     updateWordCount();
   } catch (error) {
     console.error('Failed to save mute words:', error);
@@ -44,13 +59,32 @@ function renderMuteWords() {
   updateWordCount();
 }
 
-function createWordItem(word, index) {
+function createWordItem(wordObj, index) {
   const item = document.createElement('div');
   item.className = 'word-item';
+  if (!wordObj.enabled) {
+    item.classList.add('disabled');
+  }
   
   const wordText = document.createElement('span');
   wordText.className = 'word-text';
-  wordText.textContent = word;
+  wordText.textContent = wordObj.text;
+  
+  const toggleBtn = document.createElement('label');
+  toggleBtn.className = 'toggle-switch small';
+  toggleBtn.style.marginLeft = 'auto';
+  toggleBtn.style.marginRight = '8px';
+  
+  const toggleInput = document.createElement('input');
+  toggleInput.type = 'checkbox';
+  toggleInput.checked = wordObj.enabled;
+  toggleInput.onchange = () => toggleWord(index);
+  
+  const toggleSlider = document.createElement('span');
+  toggleSlider.className = 'toggle-slider';
+  
+  toggleBtn.appendChild(toggleInput);
+  toggleBtn.appendChild(toggleSlider);
   
   const deleteBtn = document.createElement('button');
   deleteBtn.className = 'delete-btn';
@@ -59,6 +93,7 @@ function createWordItem(word, index) {
   deleteBtn.onclick = () => deleteWord(index);
   
   item.appendChild(wordText);
+  item.appendChild(toggleBtn);
   item.appendChild(deleteBtn);
   
   return item;
@@ -75,7 +110,7 @@ function addWord() {
     return;
   }
   
-  if (muteWords.includes(newWord)) {
+  if (muteWords.some(w => w.text === newWord)) {
     elements.newWordInput.classList.add('duplicate');
     setTimeout(() => {
       elements.newWordInput.classList.remove('duplicate');
@@ -83,7 +118,7 @@ function addWord() {
     return;
   }
   
-  muteWords.push(newWord);
+  muteWords.push({ text: newWord, enabled: true });
   saveMuteWords();
   renderMuteWords();
   
@@ -111,6 +146,49 @@ function updateWordCount() {
   elements.wordCount.textContent = muteWords.length;
 }
 
+function toggleWord(index) {
+  muteWords[index].enabled = !muteWords[index].enabled;
+  saveMuteWords();
+  renderMuteWords();
+  updateToggleAllState();
+}
+
+function toggleAllWords() {
+  const newState = elements.toggleAllWords.checked;
+  muteWords.forEach(word => {
+    word.enabled = newState;
+  });
+  saveMuteWords();
+  renderMuteWords();
+  updateToggleLabelText();
+}
+
+function updateToggleAllState() {
+  const enabledCount = muteWords.filter(w => w.enabled).length;
+  if (enabledCount === 0) {
+    elements.toggleAllWords.checked = false;
+    elements.toggleAllWords.indeterminate = false;
+  } else if (enabledCount === muteWords.length) {
+    elements.toggleAllWords.checked = true;
+    elements.toggleAllWords.indeterminate = false;
+  } else {
+    elements.toggleAllWords.checked = false;
+    elements.toggleAllWords.indeterminate = true;
+  }
+  updateToggleLabelText();
+}
+
+function updateToggleLabelText() {
+  const label = document.querySelector('.toggle-label');
+  if (elements.toggleAllWords.checked) {
+    label.textContent = 'すべて有効';
+  } else if (elements.toggleAllWords.indeterminate) {
+    label.textContent = '一部有効';
+  } else {
+    label.textContent = 'すべて無効';
+  }
+}
+
 async function loadDefaultWords() {
   try {
     const response = await fetch(chrome.runtime.getURL('src/default-mute-words.json'));
@@ -118,9 +196,10 @@ async function loadDefaultWords() {
     const defaultWords = data.defaultMuteWords || [];
     
     if (confirm(`デフォルトのミュートワード（${defaultWords.length}個）を読み込みますか？\n現在のワードは置き換えられます。`)) {
-      muteWords = [...defaultWords];
+      muteWords = defaultWords.map(word => ({ text: word, enabled: true }));
       await saveMuteWords();
       renderMuteWords();
+      updateToggleAllState();
       
       // 成功メッセージを表示
       elements.resetDefaultBtn.textContent = '✓ 読み込み完了';
@@ -145,5 +224,7 @@ elements.newWordInput.addEventListener('keypress', (e) => {
 });
 
 elements.resetDefaultBtn.addEventListener('click', loadDefaultWords);
+
+elements.toggleAllWords.addEventListener('change', toggleAllWords);
 
 document.addEventListener('DOMContentLoaded', loadMuteWords);

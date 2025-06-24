@@ -59,8 +59,86 @@ main {
 
 .mute-words-section h2 {
   font-size: 16px;
-  margin-bottom: 16px;
   color: #333;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.toggle-all-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-label {
+  font-size: 14px;
+  color: #666;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+.toggle-switch.small {
+  width: 36px;
+  height: 18px;
+}
+
+.toggle-switch.small .toggle-slider:before {
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+}
+
+.toggle-switch.small input:checked + .toggle-slider:before {
+  transform: translateX(18px);
 }
 
 .add-word-form {
@@ -159,6 +237,16 @@ main {
 
 .word-item.deleting {
   animation: slideOut 0.3s ease forwards;
+}
+
+.word-item.disabled {
+  opacity: 0.5;
+  background-color: #f8f9fa;
+}
+
+.word-item.disabled .word-text {
+  text-decoration: line-through;
+  color: #999;
 }
 
 @keyframes slideIn {
