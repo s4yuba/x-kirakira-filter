@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kirakira Spoiler Blocker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header>
+      <h1>
+        <span class="star-icon">✨</span>
+        Kirakira Spoiler Blocker
+      </h1>
+      <p class="subtitle">Twitter/X ネタバレ防止</p>
+    </header>
+    
+    <main>
+      <section class="mute-words-section">
+        <h2>ミュートワード管理</h2>
+        
+        <div class="add-word-form">
+          <input 
+            type="text" 
+            id="new-word-input" 
+            placeholder="ミュートワードを入力..."
+            autocomplete="off"
+          >
+          <button id="add-word-btn" class="add-btn">
+            <span>追加</span>
+          </button>
+        </div>
+        
+        <div id="mute-words-list" class="mute-words-list">
+          <p class="empty-message">ミュートワードがありません</p>
+        </div>
+      </section>
+      
+      <section class="stats-section">
+        <div class="stat-item">
+          <span class="stat-label">登録ワード数:</span>
+          <span id="word-count" class="stat-value">0</span>
+        </div>
+        <button id="reset-default-btn" class="reset-btn">
+          デフォルトワードを読み込む
+        </button>
+      </section>
+    </main>
+    
+    <footer>
+      <p class="footer-note">
+        クリックで一時的に表示できます
+      </p>
+    </footer>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
