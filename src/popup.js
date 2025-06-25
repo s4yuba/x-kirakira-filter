@@ -7,7 +7,10 @@ const elements = {
   muteWordsList: document.getElementById('mute-words-list'),
   wordCount: document.getElementById('word-count'),
   resetDefaultBtn: document.getElementById('reset-default-btn'),
-  toggleAllWords: document.getElementById('toggle-all-words')
+  toggleAllWords: document.getElementById('toggle-all-words'),
+  exportBtn: document.getElementById('export-btn'),
+  importBtn: document.getElementById('import-btn'),
+  importFile: document.getElementById('import-file')
 };
 
 let muteWords = [];
@@ -226,5 +229,89 @@ elements.newWordInput.addEventListener('keypress', (e) => {
 elements.resetDefaultBtn.addEventListener('click', loadDefaultWords);
 
 elements.toggleAllWords.addEventListener('change', toggleAllWords);
+
+elements.exportBtn.addEventListener('click', exportMuteWords);
+
+elements.importBtn.addEventListener('click', () => {
+  elements.importFile.click();
+});
+
+elements.importFile.addEventListener('change', importMuteWords);
+
+async function exportMuteWords() {
+  const exportData = {
+    version: '2.0',
+    exportDate: new Date().toISOString(),
+    muteWords: muteWords
+  };
+  
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `kirakira-mute-words-${date}.json`;
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  
+  URL.revokeObjectURL(url);
+  
+  elements.exportBtn.classList.add('success');
+  setTimeout(() => {
+    elements.exportBtn.classList.remove('success');
+  }, 1000);
+}
+
+async function importMuteWords(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    
+    if (!validateImportData(data)) {
+      throw new Error('無効なファイル形式です');
+    }
+    
+    const importWords = data.muteWords || [];
+    const wordCount = importWords.length;
+    
+    if (wordCount === 0) {
+      alert('インポートするミュートワードがありません');
+      return;
+    }
+    
+    if (confirm(`${wordCount}個のミュートワードをインポートしますか？\n現在のワードは置き換えられます。`)) {
+      muteWords = importWords;
+      await saveMuteWords();
+      renderMuteWords();
+      updateToggleAllState();
+      
+      elements.importBtn.classList.add('success');
+      setTimeout(() => {
+        elements.importBtn.classList.remove('success');
+      }, 1000);
+    }
+  } catch (error) {
+    console.error('Import failed:', error);
+    alert('ファイルのインポートに失敗しました: ' + error.message);
+  } finally {
+    event.target.value = '';
+  }
+}
+
+function validateImportData(data) {
+  if (!data || typeof data !== 'object') return false;
+  if (!Array.isArray(data.muteWords)) return false;
+  
+  return data.muteWords.every(item => 
+    typeof item === 'object' &&
+    typeof item.text === 'string' &&
+    typeof item.enabled === 'boolean'
+  );
+}
 
 document.addEventListener('DOMContentLoaded', loadMuteWords);
